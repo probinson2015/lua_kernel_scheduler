@@ -1,7 +1,7 @@
 
 local ffi = require("ffi");
 
-local Queue = require("schedlua.queue")
+local Queue = require("schedlua.queue");
 local Task = require("schedlua.task");
 
 
@@ -31,6 +31,7 @@ function Scheduler.init(self, ...)
 	--print("==== Scheduler.init ====")
 	local obj = {
 		TasksReadyToRun = Queue();
+		TasksReadyToRun2 = Queue();
 	}
 	setmetatable(obj, Scheduler_mt)
 	
@@ -60,16 +61,28 @@ end
 -- metamethod implemented.
 -- The 'params' is a table of parameters which will be passed to the function
 -- when it's ready to run.
-function Scheduler.scheduleTask(self, task, params)
-	--print("Scheduler.scheduleTask: ", task, params)
+
+local taskPriorityTable = {};
+
+function Scheduler.scheduleTask(self, task, priority, params)
+	print("Scheduler.scheduleTask: ", task, priority, params)
 	params = params or {}
 	
 	if not task then
 		return false, "no task specified"
 	end
-
+	--add task id and priority to taskPriorityTable
+	taskPriorityTable[task.TaskID] = priority;
 	task:setParams(params);
-	self.TasksReadyToRun:enqueue(task);	
+
+	--check to see which queue the task should be added to
+
+	if priority == 1 then
+		self.TasksReadyToRun:enqueue(task)
+	elseif priority == 2 then
+		self.TasksReadyToRun2:enqueue(task)
+	end
+	
 	task.state = "readytorun"
 
 	return task;
@@ -96,11 +109,16 @@ end
 
 function Scheduler.step(self)
 	-- Now check the regular fibers
-	local task = self.TasksReadyToRun:dequeue()
-
+	local task = nil;
+	
+	if self.TasksReadyToRun.first ~= nil then
+		task = self.TasksReadyToRun:dequeue()
+	else
+		task = self.TasksReadyToRun2:dequeue()
+	end
 	-- If no fiber in ready queue, then just return
 	if task == nil then
-		--print("Scheduler.step: NO TASK")
+		print("Scheduler.step: NO TASK")
 		return true
 	end
 
@@ -165,7 +183,7 @@ function Scheduler.step(self)
 	-- is if it's state is 'readytorun', otherwise, it will
 	-- stay out of the readytorun list.
 	if task.state == "readytorun" then
-		self:scheduleTask(task, results);
+		self:scheduleTask(task, taskPriorityTable[task.TaskID], results);
 	end
 end
 
