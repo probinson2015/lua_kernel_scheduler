@@ -21,10 +21,19 @@ local function spawn(scheduler, func, priority, ...)
 end
 
 
-local function task1()
-	print("first task, first line")
+local function task1(task2)
+	--print("first task, first line")
 	--Scheduler:yield();
-	print("first task, second line")
+	--print("first task, second line")
+
+	while (true) do
+		print ("task1 running")
+		if t2:getStatus() == "dead" then
+		break;
+	 	end
+		Scheduler:yield()
+	end
+
 end
 
 local function task2()
@@ -32,11 +41,11 @@ local function task2()
 end
 
 local function main()
-	local t1 = spawn(Scheduler, task1, 2)
-	local t2 = spawn(Scheduler, task2, 1)
+	t2 = spawn(Scheduler, task2, 2)
+	local t1 = spawn(Scheduler, task1, 1, t2)
 
 	while (true) do
-		print("STATUS: ", t1:getStatus(), t2:getStatus())
+--		print("STATUS: ", t1:getStatus(), t2:getStatus())
 		if t1:getStatus() == "dead" and t2:getStatus() == "dead" then
 			break;
 		end
